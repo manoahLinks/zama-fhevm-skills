@@ -1,0 +1,58 @@
+---
+description: FHEVM / Zama Protocol — build confidential smart contracts with encrypted state. Applies whenever the project uses @fhevm/solidity, @zama-fhe/relayer-sdk, or mentions FHEVM, euint, ebool, FHE.select, ERC-7984.
+globs: ["**/*.sol", "**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+# FHEVM / Zama — Cursor rules
+
+This project uses the Zama Protocol (FHEVM) for confidential smart contracts. Before writing any FHEVM code, read `AGENTS.md` at the repo root — it contains the complete task routing table and critical rules.
+
+## The rules Cursor must enforce
+
+1. **Never use `if` or `require` on an encrypted value.** Use `FHE.select(cond, a, b)` for data selection; use flag-based error patterns (see `references/05-conditional-logic.md`) for failure signaling.
+2. **After writing a ciphertext to storage, always call `FHE.allowThis(ct)`** — this is mandatory, not optional. Omitting it is the #1 FHEVM bug.
+3. **After writing a ciphertext that a user should later decrypt, always call `FHE.allow(ct, userAddress)`.**
+4. **Never return `euint*` from a `view` function expecting the caller to read a plaintext.** The return is a handle (`bytes32`); decryption is a separate async flow.
+5. **Every encrypted input parameter must be unwrapped with `FHE.fromExternal(handle, inputProof)`** before use. `externalEuint*` types are not directly operable.
+6. **`FHE.div` and `FHE.rem` require a plaintext RHS.** Dividing two ciphertexts is not supported.
+7. **Every FHE contract must inherit `ZamaEthereumConfig`** (the single Solidity base handling mainnet, Sepolia, and localhost via chainid). Without it, the contract compiles but fails at runtime.
+8. **Use `@zama-fhe/relayer-sdk`, not `fhevmjs`.** The latter is deprecated.
+9. **In tests, use `@fhevm/hardhat-plugin` helpers** (`fhevm.createEncryptedInput`, `fhevm.userDecryptEuint`). Never write custom FHE mocks.
+10. **Public decryption handle order must match exactly** between the contract's `cts[]` array and the client's `publicDecrypt([...])` call.
+11. **Loop bounds must be plaintext.** No `while (encryptedCondition)`.
+12. **User decryption request total ≤ 2048 bits.**
+
+## Task routing
+
+When the user asks for something in this repo, load the matching reference:
+
+- Declaring encrypted state or doing math: `references/02-types-and-operations.md`
+- Permissions (`allow`, `allowThis`): `references/03-acl.md`
+- Encrypted user inputs: `references/04-inputs-and-proofs.md`
+- Conditional logic / loops / error handling: `references/05-conditional-logic.md`
+- User or public decryption: `references/06-decryption.md`
+- Frontend / wallet integration: `references/07-frontend-relayer-sdk.md`
+- Hardhat testing: `references/08-testing-hardhat.md`
+- Deployment: `references/09-deployment.md`
+- ERC-7984 confidential tokens: `references/10-erc7984.md`
+- **Always** consult `references/11-anti-patterns.md` when diagnosing a bug.
+
+## Starting templates
+
+- `templates/basic-contract.sol` — minimal FHE contract with deposit/withdraw and error flags.
+- `templates/erc7984-token.sol` — confidential ERC-20 equivalent.
+- `templates/hardhat-test.ts` — test skeleton with encrypted inputs and decryption.
+- `templates/frontend-snippet.ts` — Relayer SDK init + user decryption.
+
+## Canonical examples
+
+- `examples/voting/` — sealed vote poll with public tally reveal.
+- `examples/sealed-bid-auction/` — two-step public decryption pattern.
+- `examples/erc7984-token/` — full confidential token walkthrough.
+
+## Canonical package versions
+
+- `@fhevm/solidity`, `@fhevm/hardhat-plugin`, `@zama-fhe/relayer-sdk` — pinned by the official hardhat template.
+- `@openzeppelin/confidential-contracts` ^0.4.0.
+- Hardhat template: `github.com/zama-ai/fhevm-hardhat-template`.

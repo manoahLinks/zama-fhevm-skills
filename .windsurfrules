@@ -1,0 +1,41 @@
+# FHEVM / Zama Protocol — Windsurf rules
+
+This project builds confidential smart contracts with the Zama Protocol (FHEVM). Read `AGENTS.md` at the repo root for the full task routing table and critical rules. Everything below is a summary; `AGENTS.md` and the `references/` directory are authoritative.
+
+## Critical rules — enforce on every FHEVM code change
+
+1. Never use `if` / `require` on an encrypted value. Use `FHE.select(cond, a, b)`.
+2. After writing a ciphertext to storage, always call `FHE.allowThis(ct)`. This is mandatory.
+3. When a user should be able to decrypt a ciphertext client-side, always call `FHE.allow(ct, userAddress)`.
+4. `view` functions return handles (`bytes32`), not plaintexts. Decryption is async.
+5. Unwrap every encrypted input with `FHE.fromExternal(handle, inputProof)` before use.
+6. `FHE.div` / `FHE.rem` require a plaintext RHS.
+7. Inherit `ZamaEthereumConfig` in every FHE contract (one Solidity base — handles mainnet, Sepolia, localhost automatically).
+8. Use `@zama-fhe/relayer-sdk` — not `fhevmjs`.
+9. In tests, use `@fhevm/hardhat-plugin` helpers. Never mock FHE.
+10. Public decryption handle order must match exactly between contract and client.
+11. Loop bounds must be plaintext.
+12. User decryption request total ≤ 2048 bits.
+
+## Routing — load references on demand
+
+- Types/operations → `references/02-types-and-operations.md`
+- ACL → `references/03-acl.md`
+- Inputs/proofs → `references/04-inputs-and-proofs.md`
+- Conditional logic → `references/05-conditional-logic.md`
+- Decryption → `references/06-decryption.md`
+- Frontend → `references/07-frontend-relayer-sdk.md`
+- Testing → `references/08-testing-hardhat.md`
+- Deployment → `references/09-deployment.md`
+- ERC-7984 → `references/10-erc7984.md`
+- **Anti-patterns (always consult when debugging)** → `references/11-anti-patterns.md`
+
+## Starting points
+
+- `templates/basic-contract.sol`
+- `templates/erc7984-token.sol`
+- `templates/hardhat-test.ts`
+- `templates/frontend-snippet.ts`
+- `examples/voting/`
+- `examples/sealed-bid-auction/`
+- `examples/erc7984-token/`

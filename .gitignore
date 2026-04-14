@@ -1,0 +1,20 @@
+# Local validation sandbox — clone of fhevm-hardhat-template used to test that
+# the skill's examples and templates still compile/pass against current upstream.
+# Not part of the shipped skill. Recreate with: ./validate.sh
+fhevm-validation-test/
+
+# Build / dependency artifacts (in case anyone runs npm install at the skill root)
+node_modules/
+dist/
+artifacts/
+cache/
+types/
+coverage/
+coverage.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.log
