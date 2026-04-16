@@ -82,6 +82,30 @@ All four are ~50 lines each. They defer to `references/`, `templates/`, and `exa
 
 ## Installation
 
+### One-command install (npx)
+```bash
+# Codex / AGENTS.md workflow
+npx zama-fhevm-skill@latest --tool codex
+
+# Claude Code workflow
+npx zama-fhevm-skill@latest --tool claude
+
+# Cursor workflow
+npx zama-fhevm-skill@latest --tool cursor
+
+# Windsurf workflow
+npx zama-fhevm-skill@latest --tool windsurf
+
+# Install everything
+npx zama-fhevm-skill@latest --tool all
+```
+
+Useful flags:
+
+- `--target ./path/to/project` to install into a specific directory
+- `--force` to overwrite existing skill files
+- `--dry-run` to preview what will be copied
+
 ### Claude Code
 ```bash
 # From your Claude Code skills directory (usually ~/.claude/skills/)
