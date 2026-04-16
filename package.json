@@ -1,6 +1,6 @@
 {
   "name": "zama-fhevm-skill",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Installable FHEVM skill pack for AI coding tools (Claude, Codex/AGENTS, Cursor, Windsurf).",
   "type": "module",
   "bin": {

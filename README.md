@@ -91,10 +91,10 @@ npx zama-fhevm-skill@latest --tool codex
 npx zama-fhevm-skill@latest --tool claude
 
 # Cursor workflow
-npx zama-fhevm-skill@latest --tool cursor
+npx zama-fhevm-skill@latest --tool cursor --project
 
 # Windsurf workflow
-npx zama-fhevm-skill@latest --tool windsurf
+npx zama-fhevm-skill@latest --tool windsurf --project
 
 # Install everything
 npx zama-fhevm-skill@latest --tool all
@@ -102,9 +102,16 @@ npx zama-fhevm-skill@latest --tool all
 
 Useful flags:
 
-- `--target ./path/to/project` to install into a specific directory
+- `--project` to install into the current working directory
+- `--target ./path/to/project` (alias: `--dir`) to install into a specific directory
 - `--force` to overwrite existing skill files
 - `--dry-run` to preview what will be copied
+
+Default targets when neither `--project` nor `--target` is provided:
+
+- `--tool codex` and `--tool all`: `~/.agents/skills/zama-fhevm`
+- `--tool claude`: `~/.claude/skills/zama-fhevm`
+- `--tool cursor` and `--tool windsurf`: current working directory
 
 ### Claude Code
 ```bash

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,17 +25,20 @@ function usage() {
   console.log(`zama-fhevm-skill installer
 
 Usage:
-  npx zama-fhevm-skill@latest --tool <tool> [--target <path>] [--force] [--dry-run]
+  npx zama-fhevm-skill@latest --tool <tool> [--target <path>|--dir <path>|--project] [--force] [--dry-run]
 
 Options:
   --tool       One of: codex, claude, cursor, windsurf, all
-  --target     Target directory (default: current working directory)
+  --target     Target directory (alias: --dir)
+  --project    Force install into current working directory
   --force      Overwrite existing files/directories
   --dry-run    Print actions without writing files
   --help       Show this help message
 
 Examples:
   npx zama-fhevm-skill@latest --tool codex
+  npx zama-fhevm-skill@latest --tool claude
+  npx zama-fhevm-skill@latest --tool cursor --project
   npx zama-fhevm-skill@latest --tool cursor --target ./my-project
   npx zama-fhevm-skill@latest --tool all --force
 `);
@@ -43,7 +47,9 @@ Examples:
 function parseArgs(argv) {
   const out = {
     tool: null,
-    target: process.cwd(),
+    target: null,
+    targetProvided: false,
+    project: false,
     force: false,
     dryRun: false,
     help: false
@@ -63,15 +69,20 @@ function parseArgs(argv) {
       out.dryRun = true;
       continue;
     }
+    if (arg === "--project") {
+      out.project = true;
+      continue;
+    }
     if (arg === "--tool") {
       out.tool = argv[i + 1] ?? null;
       i += 1;
       continue;
     }
-    if (arg === "--target") {
+    if (arg === "--target" || arg === "--dir") {
       const next = argv[i + 1] ?? null;
       if (next) {
         out.target = path.resolve(next);
+        out.targetProvided = true;
       }
       i += 1;
       continue;
@@ -80,6 +91,19 @@ function parseArgs(argv) {
   }
 
   return out;
+}
+
+function defaultTargetForTool(tool) {
+  const home = os.homedir();
+  const cwd = process.cwd();
+
+  if (tool === "codex" || tool === "all") {
+    return path.join(home, ".agents", "skills", "zama-fhevm");
+  }
+  if (tool === "claude") {
+    return path.join(home, ".claude", "skills", "zama-fhevm");
+  }
+  return cwd;
 }
 
 function ensureDir(dir, dryRun) {
@@ -132,8 +156,18 @@ function main() {
     process.exit(1);
   }
 
+  if (opts.project && opts.targetProvided) {
+    console.error("Error: use either --project or --target/--dir, not both.");
+    usage();
+    process.exit(1);
+  }
+
   const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const targetRoot = path.resolve(opts.target);
+  const targetRoot = opts.targetProvided
+    ? path.resolve(opts.target)
+    : opts.project
+      ? process.cwd()
+      : defaultTargetForTool(opts.tool);
 
   ensureDir(targetRoot, opts.dryRun);
   console.log(`Installing zama-fhevm-skill for tool="${opts.tool}" into ${targetRoot}`);
