@@ -169,6 +169,7 @@ FHEVM is evolving. When the docs, packages, or contract APIs change:
    ./validate.sh
    ```
    This clones (or pulls) the latest `fhevm-hardhat-template`, copies all examples in, runs the full test suite, and fails loudly if anything broke.
+   Note: the script hard-resets `./fhevm-validation-test` to `origin/main` on every run, so do not keep local work in that sandbox directory.
 3. If anything fails, fix the skill — not the test.
 
 The tool wrappers (`AGENTS.md`, `SKILL.md`, `.cursor/rules/*.mdc`, `.windsurfrules`) rarely need changes — they point to references, which absorb the drift.

@@ -60,12 +60,13 @@ Pin to these when generating `package.json` or install commands.
 
 | Package | Purpose | Verified version |
 |---|---|---|
-| `@fhevm/solidity` | Solidity library (`FHE.sol`, types, config) | latest — see hardhat template |
-| `@fhevm/hardhat-plugin` | Hardhat integration for encrypted inputs + decryption in tests | latest — see hardhat template |
-| `@zama-fhe/relayer-sdk` | TypeScript client SDK (frontend + Node) | latest |
-| `@openzeppelin/confidential-contracts` | ERC-7984 base contracts | ^0.4.0 (released 2026-03-30) |
+| `@fhevm/solidity` | Solidity library (`FHE.sol`, types, config) | 0.11.1 |
+| `@fhevm/hardhat-plugin` | Hardhat integration for encrypted inputs + decryption in tests | 0.4.2 |
+| `@zama-fhe/relayer-sdk` | TypeScript client SDK (frontend + Node) | 0.4.1 |
+| `@openzeppelin/confidential-contracts` | ERC-7984 base contracts | 0.4.0 |
 
-**Reference starting point:** `github.com/zama-ai/fhevm-hardhat-template` is the canonical template. Clone it, then `npm install`. The template pins working versions.
+**Reference starting point:** `github.com/zama-ai/fhevm-hardhat-template` is the canonical template. Clone it, then `npm install`.
+If you upgrade any package, re-run `./validate.sh` and update the pinned versions table in this file.
 
 **Canonical example dApps:** `github.com/zama-ai/dapps` — contains blind auctions, FHE Wordle, ERC-7984 frontend, and more.
 

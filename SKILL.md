@@ -41,6 +41,17 @@ These are repeated in full in `AGENTS.md`. Short form:
 11. Public decryption handle order must match on both sides.
 12. User decryption request ≤ 2048 bits total.
 
+## Canonical package versions
+
+Use these validated versions unless you intentionally upgrade and re-validate:
+
+- `@fhevm/solidity`: `0.11.1`
+- `@fhevm/hardhat-plugin`: `0.4.2`
+- `@zama-fhe/relayer-sdk`: `0.4.1`
+- `@openzeppelin/confidential-contracts`: `0.4.0`
+
+If you change versions, re-run `./validate.sh` and update these pins plus `AGENTS.md`.
+
 ## Directory map
 
 ```

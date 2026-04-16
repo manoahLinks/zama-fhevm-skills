@@ -153,6 +153,28 @@ When the contract marks a value with `FHE.makePubliclyDecryptable`, anyone can f
 const result = await instance.publicDecrypt([winnerHandle, bidHandle]);
 const winner = result[winnerHandle];
 const bid = result[bidHandle];
+
+type PublicDecryptResult = Record<string, bigint | string | boolean> & {
+    proof?: string;
+    decryptionProof?: string;
+    metadata?: { proof?: string };
+};
+
+function extractDecryptionProof(result: PublicDecryptResult): string {
+    if (typeof result.proof === "string" && result.proof.length > 0) return result.proof;
+    if (typeof result.decryptionProof === "string" && result.decryptionProof.length > 0) {
+        return result.decryptionProof;
+    }
+    if (typeof result.metadata?.proof === "string" && result.metadata.proof.length > 0) {
+        return result.metadata.proof;
+    }
+    throw new Error(
+        "publicDecrypt did not return a decryption proof. Check your @zama-fhe/relayer-sdk version."
+    );
+}
+
+const decryptionProof = extractDecryptionProof(result);
+await contract.resolve(winner, bid, decryptionProof);
 ```
 
 `publicDecrypt` also returns a proof that a contract can verify on-chain (see `references/06-decryption.md` Part B).

@@ -127,6 +127,29 @@ const bid = result[winningBidHandle];
 
 The relayer returns the plaintext values **and** a cryptographic proof that the decryption is correct.
 
+Use a helper that supports the common proof field variants across SDK releases:
+
+```typescript
+type PublicDecryptResult = Record<string, bigint | string | boolean> & {
+    proof?: string;
+    decryptionProof?: string;
+    metadata?: { proof?: string };
+};
+
+function extractDecryptionProof(result: PublicDecryptResult): string {
+    if (typeof result.proof === "string" && result.proof.length > 0) return result.proof;
+    if (typeof result.decryptionProof === "string" && result.decryptionProof.length > 0) {
+        return result.decryptionProof;
+    }
+    if (typeof result.metadata?.proof === "string" && result.metadata.proof.length > 0) {
+        return result.metadata.proof;
+    }
+    throw new Error(
+        "publicDecrypt did not return a decryption proof. Check your @zama-fhe/relayer-sdk version."
+    );
+}
+```
+
 ### Step 3 — Contract verifies and acts on the plaintext
 
 The decrypted values are submitted back to the contract along with the proof. The contract calls `FHE.checkSignatures` to verify:

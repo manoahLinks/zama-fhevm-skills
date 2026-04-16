@@ -39,3 +39,13 @@ This project builds confidential smart contracts with the Zama Protocol (FHEVM).
 - `examples/voting/`
 - `examples/sealed-bid-auction/`
 - `examples/erc7984-token/`
+
+## Canonical package versions
+
+- `@fhevm/solidity` `0.11.1`
+- `@fhevm/hardhat-plugin` `0.4.2`
+- `@zama-fhe/relayer-sdk` `0.4.1`
+- `@openzeppelin/confidential-contracts` `0.4.0`
+- Hardhat template: `github.com/zama-ai/fhevm-hardhat-template`
+
+If versions are changed, re-run `./validate.sh` and update `AGENTS.md` pins.

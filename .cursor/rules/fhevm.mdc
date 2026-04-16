@@ -53,6 +53,9 @@ When the user asks for something in this repo, load the matching reference:
 
 ## Canonical package versions
 
-- `@fhevm/solidity`, `@fhevm/hardhat-plugin`, `@zama-fhe/relayer-sdk` — pinned by the official hardhat template.
-- `@openzeppelin/confidential-contracts` ^0.4.0.
+- `@fhevm/solidity` `0.11.1`
+- `@fhevm/hardhat-plugin` `0.4.2`
+- `@zama-fhe/relayer-sdk` `0.4.1`
+- `@openzeppelin/confidential-contracts` `0.4.0`
 - Hardhat template: `github.com/zama-ai/fhevm-hardhat-template`.
+If versions are changed, re-run `./validate.sh` and update `AGENTS.md` pins.

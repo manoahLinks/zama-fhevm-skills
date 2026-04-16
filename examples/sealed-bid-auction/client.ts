@@ -18,6 +18,30 @@ const AUCTION_ABI = [
     "function auctionEnds() view returns (uint256)"
 ];
 
+type PublicDecryptResult = Record<string, bigint | string | boolean> & {
+    proof?: string;
+    decryptionProof?: string;
+    metadata?: {
+        proof?: string;
+    };
+};
+
+function extractDecryptionProof(result: PublicDecryptResult): string {
+    if (typeof result.proof === "string" && result.proof.length > 0) {
+        return result.proof;
+    }
+    if (typeof result.decryptionProof === "string" && result.decryptionProof.length > 0) {
+        return result.decryptionProof;
+    }
+    if (typeof result.metadata?.proof === "string" && result.metadata.proof.length > 0) {
+        return result.metadata.proof;
+    }
+
+    throw new Error(
+        "publicDecrypt did not return a decryption proof. Check your @zama-fhe/relayer-sdk version."
+    );
+}
+
 async function init() {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
@@ -61,16 +85,16 @@ export async function resolveAuction() {
     const bidHandle: string = await contract.highestBidHandle();
 
     // Order MUST match the contract's cts array in resolve(): [winner, bid]
-    const result = await instance.publicDecrypt([winnerHandle, bidHandle]);
+    const result = await instance.publicDecrypt([
+        winnerHandle,
+        bidHandle
+    ]) as PublicDecryptResult;
 
     const winner = result[winnerHandle] as string;
     const bid = result[bidHandle] as bigint;
 
-    // The proof is returned as part of the decryption response.
-    // In the current SDK, publicDecrypt returns the plaintexts and the proof bytes
-    // are accessed via the response metadata. Consult the SDK docs for the exact
-    // API shape in your installed version.
-    const decryptionProof: string = (result as any).proof;
+    // Different SDK releases may expose proof fields under different keys.
+    const decryptionProof = extractDecryptionProof(result);
 
     const tx = await contract.resolve(winner, bid, decryptionProof);
     await tx.wait();
