@@ -31,7 +31,7 @@ npm install --prefer-offline --no-audit --no-fund
 
 if [ ! -d "node_modules/@openzeppelin/confidential-contracts" ]; then
     echo "==> Installing OpenZeppelin Confidential Contracts..."
-    npm install --save @openzeppelin/confidential-contracts@^0.4.0 @openzeppelin/contracts \
+    npm install --save @openzeppelin/confidential-contracts@^0.5.1 @openzeppelin/contracts \
         --prefer-offline --no-audit --no-fund
 fi
 

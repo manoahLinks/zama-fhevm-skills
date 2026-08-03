@@ -22,65 +22,51 @@ FHE.allow(balances[msg.sender], msg.sender);
 
 Without this, the relayer refuses the decryption request.
 
-### The 6-step flow
+### The client call
+
+With `@zama-fhe/sdk` this is a single call. The keypair generation, EIP-712 construction, wallet signature, and permit caching that the legacy SDK exposed as six manual steps are all internal now.
 
 ```typescript
-import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk";
+// sdk built once — see references/07-frontend-sdk.md
+const values = await sdk.decryption.decryptValues([
+    { encryptedValue: ciphertextHandle, contractAddress }
+]);
 
-const instance = await createInstance({
-    ...SepoliaConfig,
-    network: window.ethereum
-});
-
-// 1. Generate a fresh NaCl keypair for this decryption session
-const keypair = instance.generateKeypair();
-
-// 2. Pair each ciphertext handle with its contract
-const handleContractPairs = [
-    { handle: ciphertextHandle, contractAddress: contractAddress }
-];
-
-// 3. Build the EIP-712 authorization message
-const startTimeStamp = Math.floor(Date.now() / 1000).toString();
-const durationDays = "10";
-const contractAddresses = [contractAddress];
-
-const eip712 = instance.createEIP712(
-    keypair.publicKey,
-    contractAddresses,
-    startTimeStamp,
-    durationDays
-);
-
-// 4. User signs with their wallet (MetaMask etc.)
-const signature = await signer.signTypedData(
-    eip712.domain,
-    { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
-    eip712.message
-);
-
-// 5. Send the decryption request to the relayer
-const result = await instance.userDecrypt(
-    handleContractPairs,
-    keypair.privateKey,
-    keypair.publicKey,
-    signature.replace("0x", ""),
-    contractAddresses,
-    signer.address,
-    startTimeStamp,
-    durationDays
-);
-
-// 6. Read the result (keyed by handle)
-const plaintext = result[ciphertextHandle];
+const plaintext = values[ciphertextHandle];
 console.log("Decrypted value:", plaintext);
+```
+
+The user is prompted for one wallet signature the first time. That permit is cached in the SDK's `storage`, so subsequent decryptions for the same contract do not re-prompt.
+
+Batch multiple handles in one round-trip:
+
+```typescript
+const values = await sdk.decryption.decryptValues([
+    { encryptedValue: balanceHandle, contractAddress },
+    { encryptedValue: limitHandle,   contractAddress }
+]);
 ```
 
 ### Hard constraints
 
 - **Total ciphertext width per request ≤ 2048 bits.** Across all handles in one call. Batch larger requests into multiple calls.
-- **The signature is time-bound.** `startTimeStamp` and `durationDays` define the validity window. After expiry, sign a new EIP-712 message.
-- **Handles must be readable by the user.** If the contract forgot `FHE.allow(ct, userAddress)`, the call rejects with an auth error — no amount of signing fixes it.
+- **The result is a record keyed by handle**, not an array. Index it with the handle you passed in.
+- **Permits are time-bound.** The SDK re-prompts for a signature when the cached permit expires; `TransportKeyPairExpiredError` means the cached keypair aged out.
+- **Handles must be readable by the user.** If the contract forgot `FHE.allow(ct, userAddress)`, the call rejects with `NotEntitledError` — no amount of signing fixes it.
+- **A signer is required.** Without one you get `SignerNotConfiguredError`.
+
+### Delegated decryption
+
+To let one address decrypt on behalf of another, grant it on-chain and use the delegated variant:
+
+```typescript
+await sdk.delegations.delegate({ delegate: operatorAddress, contractAddress });
+
+const values = await sdk.decryption.delegatedDecryptValues(
+    [{ encryptedValue: handle, contractAddress }],
+    delegatorAddress
+);
+```
 
 ### In Hardhat tests — much simpler
 
@@ -119,36 +105,19 @@ This marks the ciphertext as open. It does **not** produce a plaintext on-chain 
 ### Step 2 — Off-chain client decrypts via relayer
 
 ```typescript
-const result = await instance.publicDecrypt([winningAddressHandle, winningBidHandle]);
-// result is keyed by handle → plaintext
-const winner = result[winningAddressHandle];
-const bid = result[winningBidHandle];
+const result = await sdk.decryption.decryptPublicValues([
+    winningAddressHandle,
+    winningBidHandle
+]);
+
+const winner = result.values[winningAddressHandle];
+const bid = result.values[winningBidHandle];
+const decryptionProof = result.decryptionProof;
 ```
 
-The relayer returns the plaintext values **and** a cryptographic proof that the decryption is correct.
+The relayer returns the plaintext values **and** a cryptographic proof that the decryption is correct. `decryptPublicValues` needs no signer — public values are open to anyone.
 
-Use a helper that supports the common proof field variants across SDK releases:
-
-```typescript
-type PublicDecryptResult = Record<string, bigint | string | boolean> & {
-    proof?: string;
-    decryptionProof?: string;
-    metadata?: { proof?: string };
-};
-
-function extractDecryptionProof(result: PublicDecryptResult): string {
-    if (typeof result.proof === "string" && result.proof.length > 0) return result.proof;
-    if (typeof result.decryptionProof === "string" && result.decryptionProof.length > 0) {
-        return result.decryptionProof;
-    }
-    if (typeof result.metadata?.proof === "string" && result.metadata.proof.length > 0) {
-        return result.metadata.proof;
-    }
-    throw new Error(
-        "publicDecrypt did not return a decryption proof. Check your @zama-fhe/relayer-sdk version."
-    );
-}
-```
+The result is structured: clear values under `result.values` (keyed by handle) and the proof under `result.decryptionProof`. The legacy Relayer SDK varied this field name across releases and needed a defensive extractor; that is no longer necessary.
 
 ### Step 3 — Contract verifies and acts on the plaintext
 
@@ -193,14 +162,14 @@ FHE.allow(someCiphertext, address(otherContract));
 
 `otherContract` can then make its own user-decryption or public-decryption flows happen on that handle. Use when one contract holds the data but another contract orchestrates the reveal.
 
-The relayer SDK also exposes a `delegateUserDecrypt` flow when the decryption is performed on behalf of another user. Consult `https://docs.zama.org/protocol/relayer-sdk-guides/fhevm-relayer/decryption/delegate-decrypt` for specifics.
+For user-to-user delegation, `@zama-fhe/sdk` exposes it as a first-class namespace — `sdk.delegations.delegate(...)` to grant, then `sdk.decryption.delegatedDecryptValues(...)` to use it. See the user-decryption section above and `references/07-frontend-sdk.md`.
 
 ## Anti-patterns
 
 - **Returning `euint64` from a `view` function expecting a plaintext.** `view` returns the handle (a `bytes32`). The caller must separately run a decryption flow.
 - **Requesting decryption synchronously during a transaction.** Not supported. The reveal is always a separate step.
 - **Forgetting `FHE.allow(ct, userAddress)` before user decryption.** Most common failure mode after handle mismatch.
-- **Reordering handles between the contract's `cts` array and the relayer's `publicDecrypt` call.** Proof won't verify.
+- **Reordering handles between the contract's `cts` array and the client's `decryptPublicValues` call.** Proof won't verify.
 - **Re-using a decryption proof across contracts.** Each proof is bound to a specific handle set and contract context.
 - **Attempting to decrypt more than 2048 bits of ciphertexts in a single user-decryption call.** Split into multiple calls.
 
@@ -235,5 +204,5 @@ function resolve(address winner, uint64 bid, bytes calldata decProof) external {
 
 ## What to read next
 
-- `references/07-frontend-relayer-sdk.md` — the client side of all this
+- `references/07-frontend-sdk.md` — the client side of all this
 - `examples/sealed-bid-auction/` — a full working version of the reveal pattern

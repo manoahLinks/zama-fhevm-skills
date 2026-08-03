@@ -10,8 +10,8 @@ This project builds confidential smart contracts with the Zama Protocol (FHEVM).
 4. `view` functions return handles (`bytes32`), not plaintexts. Decryption is async.
 5. Unwrap every encrypted input with `FHE.fromExternal(handle, inputProof)` before use.
 6. `FHE.div` / `FHE.rem` require a plaintext RHS.
-7. Inherit `ZamaEthereumConfig` in every FHE contract (one Solidity base — handles mainnet, Sepolia, localhost automatically).
-8. Use `@zama-fhe/relayer-sdk` — not `fhevmjs`.
+7. Inherit the right config base: `ZamaEthereumConfig` (mainnet/Sepolia/localhost) or `ZamaPolygonConfig` (Polygon Amoy 80002). The wrong one reverts with `ZamaProtocolUnsupported()`.
+8. Use `@zama-fhe/sdk`. `@zama-fhe/relayer-sdk` is legacy and `fhevmjs` is deprecated.
 9. In tests, use `@fhevm/hardhat-plugin` helpers. Never mock FHE.
 10. Public decryption handle order must match exactly between contract and client.
 11. Loop bounds must be plaintext.
@@ -24,7 +24,8 @@ This project builds confidential smart contracts with the Zama Protocol (FHEVM).
 - Inputs/proofs → `references/04-inputs-and-proofs.md`
 - Conditional logic → `references/05-conditional-logic.md`
 - Decryption → `references/06-decryption.md`
-- Frontend → `references/07-frontend-relayer-sdk.md`
+- Frontend → `references/07-frontend-sdk.md`
+- Contract addresses / chain IDs → `references/12-contract-addresses.md`
 - Testing → `references/08-testing-hardhat.md`
 - Deployment → `references/09-deployment.md`
 - ERC-7984 → `references/10-erc7984.md`
@@ -42,10 +43,10 @@ This project builds confidential smart contracts with the Zama Protocol (FHEVM).
 
 ## Canonical package versions
 
-- `@fhevm/solidity` `0.11.1`
+- `@fhevm/solidity` `0.13.1`
 - `@fhevm/hardhat-plugin` `0.4.2`
-- `@zama-fhe/relayer-sdk` `0.4.1`
-- `@openzeppelin/confidential-contracts` `0.4.0`
+- `@zama-fhe/sdk` `3.4.0` (current client SDK)
+- `@openzeppelin/confidential-contracts` `0.5.1`
 - Hardhat template: `github.com/zama-ai/fhevm-hardhat-template`
 
 If versions are changed, re-run `./validate.sh` and update `AGENTS.md` pins.

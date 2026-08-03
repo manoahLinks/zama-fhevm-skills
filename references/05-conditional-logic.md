@@ -105,7 +105,7 @@ function _setLastError(euint8 code, address user) internal {
 }
 ```
 
-The frontend listens for `ErrorChanged`, then calls `userDecrypt` on the handle to learn the error type.
+The frontend listens for `ErrorChanged`, then calls `sdk.decryption.decryptValues(...)` on the handle to learn the error type.
 
 ## Pattern: loops
 

@@ -77,7 +77,7 @@ contract SealedBidAuction is ZamaEthereumConfig {
     }
 
     /// @notice Anyone can call this with the decrypted values and relayer proof.
-    /// @dev The handle order MUST match [winningAddress, highestBid] — same as in the client's publicDecrypt call.
+    /// @dev The handle order MUST match [winningAddress, highestBid] — same as in the client's decryptPublicValues call.
     function resolve(
         address claimedWinner,
         uint64 claimedBid,
