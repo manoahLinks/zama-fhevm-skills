@@ -140,7 +140,7 @@ euint8  r3 = FHE.randEuint8(32);         // bounded [0, 31] — bound MUST be po
 ebool   rb = FHE.randEbool();            // no bounded variant
 ```
 
-Every width has both forms (verified against `@fhevm/solidity@0.13.1`):
+Every width has both forms (verified identical in `@fhevm/solidity@0.11.1` and `0.13.1`):
 
 | Unbounded | Bounded |
 |---|---|

@@ -10,7 +10,7 @@ This project builds confidential smart contracts with the Zama Protocol (FHEVM).
 4. `view` functions return handles (`bytes32`), not plaintexts. Decryption is async.
 5. Unwrap every encrypted input with `FHE.fromExternal(handle, inputProof)` before use.
 6. `FHE.div` / `FHE.rem` require a plaintext RHS.
-7. Inherit the right config base: `ZamaEthereumConfig` (mainnet/Sepolia/localhost) or `ZamaPolygonConfig` (Polygon Amoy 80002). The wrong one reverts with `ZamaProtocolUnsupported()`.
+7. Inherit `ZamaEthereumConfig` — the only config base at the pinned 0.11.1 (mainnet/Sepolia/localhost). An unsupported chain reverts with `ZamaProtocolUnsupported()`.
 8. Use `@zama-fhe/sdk`. `@zama-fhe/relayer-sdk` is legacy and `fhevmjs` is deprecated.
 9. In tests, use `@fhevm/hardhat-plugin` helpers. Never mock FHE.
 10. Public decryption handle order must match exactly between contract and client.
@@ -43,10 +43,10 @@ This project builds confidential smart contracts with the Zama Protocol (FHEVM).
 
 ## Canonical package versions
 
-- `@fhevm/solidity` `0.13.1`
+- `@fhevm/solidity` `0.11.1`
 - `@fhevm/hardhat-plugin` `0.4.2`
 - `@zama-fhe/sdk` `3.4.0` (current client SDK)
 - `@openzeppelin/confidential-contracts` `0.5.1`
 - Hardhat template: `github.com/zama-ai/fhevm-hardhat-template`
 
-If versions are changed, re-run `./validate.sh` and update `AGENTS.md` pins.
+If versions are changed, update the `AGENTS.md` pins. (`./validate.sh` lives in the skill's source repo and is not shipped to installs.)

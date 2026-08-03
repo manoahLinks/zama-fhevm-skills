@@ -115,7 +115,7 @@ import { ZamaEthereumConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
 contract Fixed is ZamaEthereumConfig { ... }
 ```
 
-`ZamaEthereumConfig` handles mainnet (1), Sepolia (11155111), and localhost (31337) via `block.chainid`. Polygon Amoy (80002) needs `ZamaPolygonConfig` instead — using the Ethereum base there reverts with `ZamaProtocolUnsupported()`. `SepoliaConfig` is not a Solidity contract at all; it was a TypeScript export from the legacy Relayer SDK.
+`ZamaEthereumConfig` handles mainnet (1), Sepolia (11155111), and localhost (31337) via `block.chainid`; any other chain reverts with `ZamaProtocolUnsupported()`. At the pinned `@fhevm/solidity@0.11.1` it is the *only* config base — `ZamaPolygonConfig` arrives in 0.13.1+, which cannot currently be paired with `@openzeppelin/confidential-contracts`. `SepoliaConfig` is not a Solidity contract at all; it was a TypeScript export from the legacy Relayer SDK.
 
 ## 🔴 Critical: dividing two ciphertexts
 

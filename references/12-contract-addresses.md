@@ -1,8 +1,8 @@
 # Contract addresses, chain IDs, and endpoints
 
-**You almost never need to hardcode these.** In Solidity, inherit `ZamaEthereumConfig` (or `ZamaPolygonConfig`) and the correct addresses resolve from `block.chainid`. In TypeScript, import the chain preset from `@zama-fhe/sdk/chains`. This file exists for verification, debugging, block-explorer lookups, and manual/Foundry configuration.
+**You almost never need to hardcode these.** In Solidity, inherit `ZamaEthereumConfig` and the correct addresses resolve from `block.chainid`. In TypeScript, import the chain preset from `@zama-fhe/sdk/chains`. This file exists for verification, debugging, block-explorer lookups, and manual/Foundry configuration.
 
-Addresses below are cross-checked against `@fhevm/solidity@0.13.1` (`config/ZamaConfig.sol`) and the [Zama docs](https://docs.zama.org/protocol/solidity-guides/smart-contract/configure/contract_addresses). Verified 2026-08-03.
+Addresses below are cross-checked against `config/ZamaConfig.sol` in both `@fhevm/solidity@0.11.1` (the pinned version) and `0.13.1`, and against the [Zama docs](https://docs.zama.org/protocol/solidity-guides/smart-contract/configure/contract_addresses). The Ethereum and Sepolia entries are byte-identical across both versions. Verified 2026-08-03.
 
 ## Chain IDs
 
@@ -10,8 +10,8 @@ Addresses below are cross-checked against `@fhevm/solidity@0.13.1` (`config/Zama
 |---|---|---|
 | Ethereum mainnet | 1 | `ZamaEthereumConfig` |
 | Ethereum Sepolia | 11155111 | `ZamaEthereumConfig` |
-| Polygon Amoy testnet | 80002 | `ZamaPolygonConfig` |
-| Localhost / Hardhat | 31337 | either |
+| Polygon Amoy testnet | 80002 | `ZamaPolygonConfig` — **0.13.1+ only**, see caveat below |
+| Localhost / Hardhat | 31337 | `ZamaEthereumConfig` |
 | Gateway chain | 10901 | n/a — not a deploy target |
 
 The Gateway chain is where decryption and input verification are coordinated. You never deploy to it; the relayer and KMS talk to it on your behalf.
@@ -40,7 +40,7 @@ These are the three addresses the config base wires into your contract.
 
 Note: as of `@fhevm/solidity@0.13.1` the mainnet block in `ZamaConfig.sol` still carries a source comment describing these as placeholders pending deployment. Confirm against a block explorer before relying on them for a mainnet launch.
 
-### Polygon Amoy testnet (80002)
+### Polygon Amoy testnet (80002) — not reachable at the pinned version
 
 | Contract | Address |
 |---|---|
@@ -48,7 +48,9 @@ Note: as of `@fhevm/solidity@0.13.1` the mainnet block in `ZamaConfig.sol` still
 | FHEVM Executor (Coprocessor) | `0x89420269f61e4db00545cd99da0aEcA7fF0912f9` |
 | KMS Verifier | `0xCD1D89E311bce4C8DEa9a0857a0c9A4E153D4041` |
 
-Reached via `ZamaPolygonConfig`, **not** `ZamaEthereumConfig`. Inheriting the wrong base on Polygon reverts with `ZamaProtocolUnsupported()`.
+⚠️ **Reachable only from `@fhevm/solidity@0.13.1+`,** via `ZamaPolygonConfig`. The skill pins `0.11.1`, which ships `ZamaEthereumConfig` as its only config base and reverts with `ZamaProtocolUnsupported()` on chain 80002.
+
+The pin is forced by `@openzeppelin/confidential-contracts`: every published version through `0.5.1` declares an **exact** peer dependency on `@fhevm/solidity@0.11.1`. Until OpenZeppelin ships a release targeting 0.13.x, a project cannot use both ERC-7984 base contracts and Polygon Amoy. Listed here for when that changes.
 
 ## Gateway-chain contracts (10901)
 
@@ -91,7 +93,8 @@ A return of `0` means the chain is not recognized — you are on an unsupported 
 ## Anti-patterns
 
 - **Hardcoding these into a contract instead of inheriting the config base.** The addresses change between protocol releases; the base is updated with the package.
-- **Assuming `ZamaEthereumConfig` covers every chain.** It handles 1, 11155111, and 31337, and reverts with `ZamaProtocolUnsupported()` on anything else. Polygon needs `ZamaPolygonConfig`.
+- **Assuming `ZamaEthereumConfig` covers every chain.** It handles 1, 11155111, and 31337, and reverts with `ZamaProtocolUnsupported()` on anything else.
+- **Upgrading `@fhevm/solidity` to 0.13.1 to get Polygon support while using OpenZeppelin confidential contracts.** The peer dependency is exact — npm will refuse with `ERESOLVE`, and `--force` produces a broken tree.
 - **Copying an address out of a blog post or an older doc version.** Zama has redeployed these across protocol versions. Trust the version of `ZamaConfig.sol` you actually compile against.
 - **Treating the Gateway chain ID as a deploy target.** It is infrastructure, not a host chain.
 

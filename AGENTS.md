@@ -27,7 +27,7 @@ Every rule here maps to a known class of bugs. Violating any of them produces co
 6. **`FHE.div` and `FHE.rem` require a plaintext (non-encrypted) right-hand side.** Dividing two ciphertexts is not supported.
 7. **`FHE.randEuintX(upperBound)` requires `upperBound` to be a power of 2**, and cannot be called from `eth_call` — it must run inside a real transaction.
 8. **Loop bounds must be plaintext.** You cannot write `while (encryptedCond)`.
-9. **Inherit the right config base** in every FHE contract. `ZamaEthereumConfig` covers mainnet (1), Sepolia (11155111), and localhost (31337); `ZamaPolygonConfig` covers Polygon Amoy (80002). Anything else reverts with `ZamaProtocolUnsupported()`. There is no `SepoliaConfig` in Solidity — that name only ever existed in the legacy TypeScript Relayer SDK.
+9. **Inherit `ZamaEthereumConfig`** in every FHE contract. At the pinned `@fhevm/solidity@0.11.1` this is the only config base, and it covers mainnet (1), Sepolia (11155111), and localhost (31337); any other chain reverts with `ZamaProtocolUnsupported()`. (0.13.1+ adds a separate `ZamaPolygonConfig` for Polygon Amoy, but that version is not usable with `@openzeppelin/confidential-contracts` — see the versions table.) There is no `SepoliaConfig` in Solidity — that name only ever existed in the legacy TypeScript Relayer SDK.
 10. **In tests, never mock FHE.** Use the `@fhevm/hardhat-plugin` which provides real encrypted input creation and decryption helpers.
 11. **Public decryption proof is bound to the exact order of handles.** `[a, b]` is not interchangeable with `[b, a]`.
 12. **User decryption in a single request cannot exceed 2048 bits total** across all ciphertexts.
@@ -61,18 +61,20 @@ Pin to these when generating `package.json` or install commands.
 
 | Package | Purpose | Verified version |
 |---|---|---|
-| `@fhevm/solidity` | Solidity library (`FHE.sol`, types, config) | 0.13.1 |
+| `@fhevm/solidity` | Solidity library (`FHE.sol`, types, config) | 0.11.1 |
 | `@fhevm/hardhat-plugin` | Hardhat integration for encrypted inputs + decryption in tests | 0.4.2 |
 | `@zama-fhe/sdk` | TypeScript client SDK (frontend + Node) — **current** | 3.4.0 |
 | `@zama-fhe/react-sdk` | React bindings for the above | matches `@zama-fhe/sdk` |
 | `@openzeppelin/confidential-contracts` | ERC-7984 base contracts | 0.5.1 |
 
-Verified against the npm registry on 2026-08-03.
+Verified against the npm registry on 2026-08-03, and confirmed to install together by `./validate.sh`.
+
+⚠️ **`@fhevm/solidity` is held at 0.11.1 on purpose — do not "upgrade" it to 0.13.1.** Every published `@openzeppelin/confidential-contracts` release through 0.5.1 declares an **exact** peer dependency on `@fhevm/solidity@0.11.1`. Bumping the library fails with `ERESOLVE`, and `--force` yields a broken dependency tree. 0.13.1 exists and adds `ZamaPolygonConfig` (Polygon Amoy, 80002), but it is unusable alongside the ERC-7984 base contracts this skill teaches. Revisit only when OpenZeppelin publishes a release targeting 0.13.x.
 
 **Legacy — do not use for new work:** `@zama-fhe/relayer-sdk` (superseded by `@zama-fhe/sdk`; still published at 0.4.4) and `fhevmjs` (long deprecated). See the migration table in `references/07-frontend-sdk.md`.
 
 **Reference starting point:** `github.com/zama-ai/fhevm-hardhat-template` is the canonical template. Clone it, then `npm install`.
-If you upgrade any package, re-run `./validate.sh`, then update the pinned versions table in this file and the address tables in `references/12-contract-addresses.md`.
+If you upgrade any package, update the pinned versions table in this file and the address tables in `references/12-contract-addresses.md`. Maintainers working in the skill's source repo should also re-run `./validate.sh` there — that script is a repo-side development tool and is deliberately not part of an installed skill, so it will not be present in this directory if you installed via `npx zama-fhevm-skill`.
 
 **Canonical example dApps:** `github.com/zama-ai/dapps` — contains blind auctions, FHE Wordle, ERC-7984 frontend, and more.
 
@@ -84,7 +86,7 @@ If you upgrade any package, re-run `./validate.sh`, then update the pinned versi
 ├── SKILL.md                          # Claude Code wrapper
 ├── .cursor/rules/fhevm.mdc           # Cursor wrapper
 ├── .windsurfrules                    # Windsurf wrapper
-├── validate.sh                       # Re-validate examples against the upstream template
+├── validate.sh                       # Repo-only: re-validate examples (not shipped to installs)
 ├── references/
 │   ├── 00-setup.md
 │   ├── 01-architecture.md

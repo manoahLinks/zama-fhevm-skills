@@ -38,7 +38,7 @@ These are repeated in full in `AGENTS.md`. Short form:
 6. `FHE.div` / `FHE.rem` require plaintext RHS.
 7. `FHE.randEuintX(bound)` — bound must be a power of 2; no `eth_call`.
 8. Loop bounds must be plaintext.
-9. Inherit `ZamaEthereumConfig` (Ethereum/Sepolia/local) or `ZamaPolygonConfig` (Amoy) — Solidity only.
+9. Inherit `ZamaEthereumConfig` — the only config base at the pinned 0.11.1; Solidity only.
 10. Never mock FHE in tests — use `@fhevm/hardhat-plugin`.
 11. Public decryption handle order must match on both sides.
 12. User decryption request ≤ 2048 bits total.
@@ -47,14 +47,14 @@ These are repeated in full in `AGENTS.md`. Short form:
 
 Use these validated versions unless you intentionally upgrade and re-validate:
 
-- `@fhevm/solidity`: `0.13.1`
+- `@fhevm/solidity`: `0.11.1`
 - `@fhevm/hardhat-plugin`: `0.4.2`
 - `@zama-fhe/sdk`: `3.4.0` ← current client SDK
 - `@openzeppelin/confidential-contracts`: `0.5.1`
 
 Legacy, do not use for new work: `@zama-fhe/relayer-sdk` (superseded by `@zama-fhe/sdk`), `fhevmjs` (deprecated).
 
-If you change versions, re-run `./validate.sh` and update these pins plus the table in `AGENTS.md`.
+If you change versions, update these pins plus the table in `AGENTS.md`. (`./validate.sh` re-runs the example suite, but it lives in the skill's source repo and is not shipped to installs — it will not be in this directory.)
 
 ## Directory map
 

@@ -14,14 +14,14 @@ Drop this skill into your project and ask your agent:
 
 Current pinned versions (verified against the npm registry 2026-08-03):
 
-- `@fhevm/solidity@0.13.1`
+- `@fhevm/solidity@0.11.1`
 - `@fhevm/hardhat-plugin@0.4.2`
 - `@zama-fhe/sdk@3.4.0` — current client SDK
 - `@openzeppelin/confidential-contracts@0.5.1`
 
-The example contracts and Hardhat tests below were validated end-to-end against the official `fhevm-hardhat-template` under the **previous** pin set (`@fhevm/solidity@0.11.1`, `@openzeppelin/confidential-contracts@0.4.0`). Re-run `./validate.sh` to confirm them against the versions above.
+The example contracts and Hardhat tests below are validated end-to-end by `./validate.sh` against the official `fhevm-hardhat-template` at exactly the pins above — **10/10 passing**, last run 2026-08-03.
 
-Note that `validate.sh` copies only `*.sol` and `*.test.ts` into the sandbox — it does **not** exercise the `client.ts` files or the frontend reference. The `@zama-fhe/sdk` client code is verified against the package's published type definitions, not by a running test.
+`validate.sh` copies only `*.sol` and `*.test.ts` into the sandbox, so it does **not** exercise the `client.ts` files or the frontend reference. The `@zama-fhe/sdk` client code is verified against the package's published TypeScript definitions, not by a running test.
 
 ```
 Voting               3/3 ✔  (encrypted tallies + public reveal)

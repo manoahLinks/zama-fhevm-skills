@@ -76,7 +76,7 @@ Then add to `hardhat.config.ts`:
 import "@fhevm/hardhat-plugin";
 ```
 
-And inherit `ZamaEthereumConfig` in every contract that uses FHE. It automatically wires up the correct coprocessor addresses based on `block.chainid` — mainnet (1), Sepolia (11155111), and localhost (31337). For Polygon Amoy (80002) use `ZamaPolygonConfig` instead. **Without this inheritance, `FHE.*` calls will fail at runtime** because the contract will not know where the coprocessor lives.
+And inherit `ZamaEthereumConfig` in every contract that uses FHE. It automatically wires up the correct coprocessor addresses based on `block.chainid` — mainnet (1), Sepolia (11155111), and localhost (31337). **Without this inheritance, `FHE.*` calls will fail at runtime** because the contract will not know where the coprocessor lives.
 
 ## Common setup mistakes
 

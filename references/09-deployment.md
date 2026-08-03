@@ -10,8 +10,8 @@ Every FHE contract must inherit a config base. Which one depends on the target c
 |---|---|---|
 | Ethereum mainnet | 1 | `ZamaEthereumConfig` |
 | Ethereum Sepolia | 11155111 | `ZamaEthereumConfig` |
-| Hardhat localhost | 31337 | either |
-| Polygon Amoy | 80002 | `ZamaPolygonConfig` |
+| Hardhat localhost | 31337 | `ZamaEthereumConfig` |
+| Polygon Amoy | 80002 | `ZamaPolygonConfig` (requires `@fhevm/solidity` 0.13.1+, incompatible with OZ confidential contracts) |
 
 Any chain not covered by the base you inherited reverts with `ZamaProtocolUnsupported()`.
 
@@ -32,7 +32,7 @@ Without this inheritance, `FHE.*` calls compile but fail at runtime because the 
 
 **Note:** `SepoliaConfig` is not a Solidity contract. It was a TypeScript export from the legacy `@zama-fhe/relayer-sdk`; the current `@zama-fhe/sdk` uses chain presets (`sepolia`, `mainnet`) from `@zama-fhe/sdk/chains`.
 
-For Polygon Amoy (80002), inherit `ZamaPolygonConfig` instead. Any chain not covered by the base you inherit reverts with `ZamaProtocolUnsupported()`. Address tables: `references/12-contract-addresses.md`.
+Any chain not covered by the base you inherit reverts with `ZamaProtocolUnsupported()`. At the pinned `@fhevm/solidity@0.11.1`, `ZamaEthereumConfig` is the only base available. Address tables: `references/12-contract-addresses.md`.
 
 ## `hardhat.config.ts` networks
 
