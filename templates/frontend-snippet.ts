@@ -1,124 +1,154 @@
-// Copy-pasteable frontend snippets for the Relayer SDK.
-// Covers: instance init, encrypted input, transaction send, user decryption.
+// Copy-pasteable frontend snippets for the Zama SDK (@zama-fhe/sdk).
+// Covers: SDK init, encrypted input, transaction send, user + public decryption.
+//
+// NOTE: this is the CURRENT client SDK. If you are looking at code using
+// `createInstance` / `SepoliaConfig` / `instance.createEncryptedInput`, that is
+// the legacy `@zama-fhe/relayer-sdk`. See references/07-frontend-sdk.md.
 
-import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk";
-import { BrowserProvider, Contract } from "ethers";
+import { ZamaSDK, indexedDBStorage } from "@zama-fhe/sdk";
+import { createConfig } from "@zama-fhe/sdk/viem";
+import { sepolia } from "@zama-fhe/sdk/chains";
+import { web } from "@zama-fhe/sdk/web";
+import {
+    createPublicClient,
+    createWalletClient,
+    custom,
+    http,
+    type Address,
+    type Hex
+} from "viem";
 
 // ---------------------------------------------------------------------------
-// 1. Singleton instance (call once at app start)
+// 1. Singleton SDK (construct once at app start — this is synchronous)
 // ---------------------------------------------------------------------------
-let instancePromise: Promise<any> | null = null;
+let sdk: ZamaSDK | null = null;
 
-export function getFhevmInstance() {
-    if (!instancePromise) {
-        instancePromise = createInstance({
-            ...SepoliaConfig,
-            network: window.ethereum
+export function getSdk(): ZamaSDK {
+    if (!sdk) {
+        const publicClient = createPublicClient({
+            chain: sepolia,
+            transport: http()
         });
+
+        const walletClient = createWalletClient({
+            chain: sepolia,
+            transport: custom(window.ethereum!)
+        });
+
+        sdk = new ZamaSDK(
+            createConfig({
+                chains: [sepolia],
+                publicClient,
+                walletClient,
+                ethereum: window.ethereum,      // enables account-change tracking
+                storage: indexedDBStorage,      // caches permits across reloads
+                relayers: { [sepolia.id]: web() }
+            })
+        );
     }
-    return instancePromise;
+    return sdk;
 }
 
 // ---------------------------------------------------------------------------
 // 2. Encrypt an input and send a transaction
 // ---------------------------------------------------------------------------
 export async function deposit(
-    contract: Contract,
-    contractAddress: string,
-    userAddress: string,
-    amount: bigint
+    contractAddress: Address,
+    userAddress: Address,
+    amount: bigint,
+    abi: readonly unknown[],
+    walletClient: any
 ) {
-    const instance = await getFhevmInstance();
+    const sdk = getSdk();
 
-    const input = instance.createEncryptedInput(contractAddress, userAddress);
-    input.add64(amount);
-    const enc = await input.encrypt();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [{ value: amount, type: "euint64" }],
+        contractAddress,
+        userAddress
+    });
 
-    const tx = await contract.deposit(enc.handles[0], enc.inputProof);
-    await tx.wait();
+    return await walletClient.writeContract({
+        address: contractAddress,
+        abi,
+        functionName: "deposit",
+        args: [encryptedValues[0], inputProof]
+    });
 }
 
 // ---------------------------------------------------------------------------
-// 3. User decryption (EIP-712 flow)
+// 3. User decryption
+//    The EIP-712 permit flow is handled internally — one wallet signature,
+//    then cached in `storage`.
 // ---------------------------------------------------------------------------
 export async function readEncryptedBalance(
-    contract: Contract,
-    contractAddress: string,
-    userAddress: string,
-    signer: any
+    contractAddress: Address,
+    userAddress: Address,
+    abi: readonly unknown[],
+    publicClient: any
 ): Promise<bigint> {
-    const instance = await getFhevmInstance();
+    const sdk = getSdk();
 
-    // Fetch the handle from the contract
-    const handle: string = await contract.balanceOf(userAddress);
+    // Fetch the ciphertext handle from the contract
+    const handle: Hex = await publicClient.readContract({
+        address: contractAddress,
+        abi,
+        functionName: "balanceOf",
+        args: [userAddress]
+    });
 
-    // Session keypair
-    const keypair = instance.generateKeypair();
+    // Decrypt. Result is a record keyed by handle — NOT an array.
+    const values = await sdk.decryption.decryptValues([
+        { encryptedValue: handle, contractAddress }
+    ]);
 
-    // Build the EIP-712 authorization message
-    const startTimeStamp = Math.floor(Date.now() / 1000).toString();
-    const durationDays = "10";
+    return values[handle] as bigint;
+}
 
-    const eip712 = instance.createEIP712(
-        keypair.publicKey,
-        [contractAddress],
-        startTimeStamp,
-        durationDays
+// Batch several handles in one round-trip (max 2048 bits total per request)
+export async function readMany(
+    contractAddress: Address,
+    handles: Hex[]
+): Promise<Record<Hex, bigint>> {
+    const sdk = getSdk();
+
+    const values = await sdk.decryption.decryptValues(
+        handles.map((encryptedValue) => ({ encryptedValue, contractAddress }))
     );
 
-    // Sign with the user's wallet
-    const signature = await signer.signTypedData(
-        eip712.domain,
-        {
-            UserDecryptRequestVerification:
-                eip712.types.UserDecryptRequestVerification
-        },
-        eip712.message
-    );
-
-    // Submit the decryption request
-    const result = await instance.userDecrypt(
-        [{ handle, contractAddress }],
-        keypair.privateKey,
-        keypair.publicKey,
-        signature.replace("0x", ""),
-        [contractAddress],
-        await signer.getAddress(),
-        startTimeStamp,
-        durationDays
-    );
-
-    return result[handle] as bigint;
+    return values as Record<Hex, bigint>;
 }
 
 // ---------------------------------------------------------------------------
-// 4. Public decryption (for values revealed via FHE.makePubliclyDecryptable)
+// 4. Public decryption (values revealed via FHE.makePubliclyDecryptable)
+//    No signer required. Returns the clear values AND the decryption proof.
 // ---------------------------------------------------------------------------
-export async function readPublicResult(
-    handles: string[]
-): Promise<Record<string, bigint | string | boolean>> {
-    const instance = await getFhevmInstance();
-    return await instance.publicDecrypt(handles);
+export async function readPublicResult(handles: Hex[]) {
+    const sdk = getSdk();
+
+    // Handle order must match the contract's `cts` array exactly.
+    const result = await sdk.decryption.decryptPublicValues(handles);
+
+    return {
+        values: result.values,
+        decryptionProof: result.decryptionProof
+    };
 }
 
 // ---------------------------------------------------------------------------
 // 5. Typical React usage
+//    Construction is synchronous, so a useMemo is enough — no loading state
+//    for the SDK itself.
 // ---------------------------------------------------------------------------
 /*
 import { useEffect, useState } from "react";
 
-function BalanceDisplay({ contract, contractAddress, signer }) {
+function BalanceDisplay({ contractAddress, userAddress, abi, publicClient }) {
     const [balance, setBalance] = useState<bigint | null>(null);
 
     useEffect(() => {
-        (async () => {
-            const userAddress = await signer.getAddress();
-            const value = await readEncryptedBalance(
-                contract, contractAddress, userAddress, signer
-            );
-            setBalance(value);
-        })();
-    }, [contract, contractAddress, signer]);
+        readEncryptedBalance(contractAddress, userAddress, abi, publicClient)
+            .then(setBalance);
+    }, [contractAddress, userAddress]);
 
     if (balance === null) return <div>Loading...</div>;
     return <div>Balance: {balance.toString()}</div>;

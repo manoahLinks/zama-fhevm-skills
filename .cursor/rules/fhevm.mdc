@@ -1,5 +1,5 @@
 ---
-description: FHEVM / Zama Protocol — build confidential smart contracts with encrypted state. Applies whenever the project uses @fhevm/solidity, @zama-fhe/relayer-sdk, or mentions FHEVM, euint, ebool, FHE.select, ERC-7984.
+description: FHEVM / Zama Protocol — build confidential smart contracts with encrypted state. Applies whenever the project uses @fhevm/solidity, @zama-fhe/sdk, or mentions FHEVM, euint, ebool, FHE.select, ERC-7984.
 globs: ["**/*.sol", "**/*.ts", "**/*.tsx"]
 alwaysApply: false
 ---
@@ -16,10 +16,10 @@ This project uses the Zama Protocol (FHEVM) for confidential smart contracts. Be
 4. **Never return `euint*` from a `view` function expecting the caller to read a plaintext.** The return is a handle (`bytes32`); decryption is a separate async flow.
 5. **Every encrypted input parameter must be unwrapped with `FHE.fromExternal(handle, inputProof)`** before use. `externalEuint*` types are not directly operable.
 6. **`FHE.div` and `FHE.rem` require a plaintext RHS.** Dividing two ciphertexts is not supported.
-7. **Every FHE contract must inherit `ZamaEthereumConfig`** (the single Solidity base handling mainnet, Sepolia, and localhost via chainid). Without it, the contract compiles but fails at runtime.
-8. **Use `@zama-fhe/relayer-sdk`, not `fhevmjs`.** The latter is deprecated.
+7. **Every FHE contract must inherit `ZamaEthereumConfig`** — the only config base at the pinned `@fhevm/solidity@0.11.1`, covering mainnet/Sepolia/localhost. Without it the contract compiles but fails at runtime; an unsupported chain reverts with `ZamaProtocolUnsupported()`.
+8. **Use `@zama-fhe/sdk`.** Both `@zama-fhe/relayer-sdk` (legacy) and `fhevmjs` (deprecated) are superseded. `createInstance` / `SepoliaConfig` / `createEncryptedInput` are legacy API — the current entry point is `new ZamaSDK(createConfig({...}))`.
 9. **In tests, use `@fhevm/hardhat-plugin` helpers** (`fhevm.createEncryptedInput`, `fhevm.userDecryptEuint`). Never write custom FHE mocks.
-10. **Public decryption handle order must match exactly** between the contract's `cts[]` array and the client's `publicDecrypt([...])` call.
+10. **Public decryption handle order must match exactly** between the contract's `cts[]` array and the client's `decryptPublicValues([...])` call.
 11. **Loop bounds must be plaintext.** No `while (encryptedCondition)`.
 12. **User decryption request total ≤ 2048 bits.**
 
@@ -32,7 +32,8 @@ When the user asks for something in this repo, load the matching reference:
 - Encrypted user inputs: `references/04-inputs-and-proofs.md`
 - Conditional logic / loops / error handling: `references/05-conditional-logic.md`
 - User or public decryption: `references/06-decryption.md`
-- Frontend / wallet integration: `references/07-frontend-relayer-sdk.md`
+- Frontend / wallet integration: `references/07-frontend-sdk.md`
+- Contract addresses / chain IDs / relayer URLs: `references/12-contract-addresses.md`
 - Hardhat testing: `references/08-testing-hardhat.md`
 - Deployment: `references/09-deployment.md`
 - ERC-7984 confidential tokens: `references/10-erc7984.md`
@@ -43,7 +44,7 @@ When the user asks for something in this repo, load the matching reference:
 - `templates/basic-contract.sol` — minimal FHE contract with deposit/withdraw and error flags.
 - `templates/erc7984-token.sol` — confidential ERC-20 equivalent.
 - `templates/hardhat-test.ts` — test skeleton with encrypted inputs and decryption.
-- `templates/frontend-snippet.ts` — Relayer SDK init + user decryption.
+- `templates/frontend-snippet.ts` — Zama SDK init + user decryption.
 
 ## Canonical examples
 
@@ -55,7 +56,7 @@ When the user asks for something in this repo, load the matching reference:
 
 - `@fhevm/solidity` `0.11.1`
 - `@fhevm/hardhat-plugin` `0.4.2`
-- `@zama-fhe/relayer-sdk` `0.4.1`
-- `@openzeppelin/confidential-contracts` `0.4.0`
+- `@zama-fhe/sdk` `3.4.0` (current client SDK)
+- `@openzeppelin/confidential-contracts` `0.5.1`
 - Hardhat template: `github.com/zama-ai/fhevm-hardhat-template`.
-If versions are changed, re-run `./validate.sh` and update `AGENTS.md` pins.
+If versions are changed, update the `AGENTS.md` pins. (`./validate.sh` lives in the skill's source repo and is not shipped to installs.)

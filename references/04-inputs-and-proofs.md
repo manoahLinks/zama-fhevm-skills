@@ -49,10 +49,12 @@ All three `externalXxx` handles reference values packed into the same `inputProo
 
 **Handle order does not need to match TypeScript input order.** The TypeScript side adds values in one order; the Solidity side can unwrap them in a different order. The handle itself carries enough information.
 
-## Client side (Hardhat test / frontend — same API)
+## Client side — Hardhat tests
+
+The test plugin uses a chained builder. The frontend SDK does **not** — see the Zama SDK section below.
 
 ```typescript
-import { fhevm } from "hardhat";   // or the relayer SDK instance in a frontend
+import { fhevm } from "hardhat";
 
 const input = fhevm.createEncryptedInput(
     contractAddress,   // the contract that will receive the input
@@ -69,7 +71,7 @@ const enc = await input.encrypt();
 // enc.inputProof is bytes
 ```
 
-### Supported add methods
+### Supported add methods (`@fhevm/hardhat-plugin`)
 
 | Method | Accepts |
 |---|---|
@@ -99,30 +101,35 @@ await contract.connect(user).trade(
 );
 ```
 
-## Frontend (Relayer SDK) version
+## Frontend (Zama SDK) version
 
-Same API, different source:
+Same concept, different API surface from the Hardhat test helper:
 
 ```typescript
-import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk";
-
-const instance = await createInstance({
-    ...SepoliaConfig,
-    network: window.ethereum
+// sdk built once — see references/07-frontend-sdk.md
+const { encryptedValues, inputProof } = await sdk.encrypt({
+    values: [{ value: BigInt(amount), type: "euint64" }],
+    contractAddress,
+    userAddress
 });
 
-const input = instance.createEncryptedInput(contractAddress, userAddress);
-input.add64(BigInt(amount));
-const enc = await input.encrypt();
-
-await contract.bid(enc.handles[0], enc.inputProof);
+await contract.bid(encryptedValues[0], inputProof);
 ```
 
-The `input.encrypt()` call performs local encryption, computes the ZKPoK, and uploads the ciphertext blob via the relayer in one step.
+`sdk.encrypt` performs local encryption, computes the ZKPoK, and uploads the ciphertext blob via the relayer in one step.
+
+Note the two APIs differ in shape and are easy to confuse:
+
+| | Encrypt call | Results |
+|---|---|---|
+| Frontend (`@zama-fhe/sdk`) | `sdk.encrypt({ values, contractAddress, userAddress })` | `encryptedValues[]`, `inputProof` |
+| Hardhat tests (`@fhevm/hardhat-plugin`) | `fhevm.createEncryptedInput(c, u)` + `.add64()` + `.encrypt()` | `handles[]`, `inputProof` |
+
+The chained `.add64()` builder still exists in the **test** plugin. It is not the frontend API — that form on the client side means you are on the legacy `@zama-fhe/relayer-sdk`.
 
 ## Binding: `contractAddress` and `userAddress` are load-bearing
 
-`createEncryptedInput(contractAddress, userAddress)` **binds the proof** to those two addresses. The resulting inputs can only be consumed by that contract when submitted by that user. Do not reuse handles across contracts or users.
+Both **bind the proof** to those two addresses. The resulting inputs can only be consumed by that contract when submitted by that user. Do not reuse handles across contracts or users.
 
 If the contract address changes (e.g., after a redeploy), you must re-encrypt. You cannot port handles.
 
@@ -130,8 +137,8 @@ If the contract address changes (e.g., after a redeploy), you must re-encrypt. Y
 
 - **Forgetting `FHE.fromExternal`**: passing `externalEuint64` directly to `FHE.add` fails to compile. Always unwrap first.
 - **Reusing handles across contracts**: the proof is bound to a specific contract address. A different contract will reject it.
-- **Encrypting with the wrong user address**: if `createEncryptedInput` is called with Alice's address but Bob sends the tx, `fromExternal` reverts.
-- **Splitting inputs across multiple `.encrypt()` calls when they could share a proof**: wastes gas. Pack all inputs for one tx into one encrypt call.
+- **Encrypting with the wrong user address**: if the encrypt call is bound to Alice's address but Bob sends the tx, `fromExternal` reverts.
+- **Splitting inputs across multiple encrypt calls when they could share a proof**: wastes gas. Pack all inputs for one tx into one encrypt call.
 - **Passing a stale `inputProof` to a second transaction**: proofs are single-use within the context of a specific contract call.
 
 ## Worked example: deposit with multiple fields
@@ -156,12 +163,23 @@ function deposit(
 ```
 
 ```typescript
-const input = instance.createEncryptedInput(contractAddress, user.address);
-input.add64(1_000n);
-input.add8(3n);
-const enc = await input.encrypt();
-await contract.connect(user).deposit(enc.handles[0], enc.handles[1], enc.inputProof);
+const { encryptedValues, inputProof } = await sdk.encrypt({
+    values: [
+        { value: 1_000n, type: "euint64" },
+        { value: 3n,     type: "euint8"  }
+    ],
+    contractAddress,
+    userAddress: user.address
+});
+
+await contract.connect(user).deposit(
+    encryptedValues[0],
+    encryptedValues[1],
+    inputProof
+);
 ```
+
+`encryptedValues` comes back in the same order as `values`, and every entry shares the single `inputProof`.
 
 ## What to read next
 

@@ -115,7 +115,7 @@ import { ZamaEthereumConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
 contract Fixed is ZamaEthereumConfig { ... }
 ```
 
-There is only ONE Solidity config base — `ZamaEthereumConfig`. It handles mainnet, Sepolia, and localhost via `block.chainid`. `SepoliaConfig` is a TypeScript-only export from the Relayer SDK; it does not exist in Solidity.
+`ZamaEthereumConfig` handles mainnet (1), Sepolia (11155111), and localhost (31337) via `block.chainid`; any other chain reverts with `ZamaProtocolUnsupported()`. At the pinned `@fhevm/solidity@0.11.1` it is the *only* config base — `ZamaPolygonConfig` arrives in 0.13.1+, which cannot currently be paired with `@openzeppelin/confidential-contracts`. `SepoliaConfig` is not a Solidity contract at all; it was a TypeScript export from the legacy Relayer SDK.
 
 ## 🔴 Critical: dividing two ciphertexts
 
@@ -150,16 +150,26 @@ cts[0] = FHE.toBytes32(winner);
 cts[1] = FHE.toBytes32(amount);
 
 // Client calls:
-instance.publicDecrypt([amountHandle, winnerHandle]);   // ❌ WRONG ORDER
+sdk.decryption.decryptPublicValues([amountHandle, winnerHandle]);   // ❌ WRONG ORDER
 ```
 
 The decryption proof is cryptographically bound to the exact handle order. Swapping means the proof won't verify.
 
 **Fix:** match the order in the contract's `cts` array exactly.
 
-## 🟡 Common: using `fhevmjs` instead of `@zama-fhe/relayer-sdk`
+## 🟡 Common: using a superseded client SDK
 
-`fhevmjs` is deprecated. Use `@zama-fhe/relayer-sdk`.
+The client package has moved twice. Current is **`@zama-fhe/sdk`**.
+
+| Package | Status |
+|---|---|
+| `@zama-fhe/sdk` | ✅ Current |
+| `@zama-fhe/relayer-sdk` | ⚠️ Legacy — still works, superseded |
+| `fhevmjs` | ❌ Long deprecated |
+
+The tell is the entry point: if the code calls `createInstance({ ...SepoliaConfig })` or `instance.createEncryptedInput(...)`, it is written against the legacy Relayer SDK. The current API is `new ZamaSDK(createConfig({...}))` plus `sdk.encrypt(...)` and `sdk.decryption.decryptValues(...)`.
+
+Migration table: `references/07-frontend-sdk.md`. This is a client-only change — the Solidity side is unaffected.
 
 ## 🟡 Common: reusing encrypted inputs across transactions
 
@@ -227,8 +237,9 @@ Simulated calls (e.g., dry-runs in ethers) silently fail on `rand*` functions. O
 ## 🟢 Low-severity but annoying
 
 - **Using Node 21 or 23:** downgrade to 20 or 22.
-- **Importing from `fhevmjs`:** update to `@zama-fhe/relayer-sdk`.
-- **Creating a new relayer SDK instance on every component render:** move to a provider or module singleton.
+- **Importing from `fhevmjs` or `@zama-fhe/relayer-sdk`:** update to `@zama-fhe/sdk`.
+- **Constructing a `ZamaSDK` on every component render:** move to a provider or module singleton.
+- **Mixing SDK adapters:** `createConfig` from `@zama-fhe/sdk/viem` needs viem clients; `/ethers` needs ethers ones.
 - **Skipping `npm install` after cloning the template:** pinned versions exist for a reason.
 - **Upgrading `@fhevm/solidity` without re-running tests:** breaking changes happen.
 - **Forgetting to `vars set MNEMONIC` and `INFURA_API_KEY` before deploying to Sepolia.**
@@ -237,14 +248,15 @@ Simulated calls (e.g., dry-runs in ethers) silently fail on `rand*` functions. O
 
 When an FHEVM contract "doesn't work", run through this in order:
 
-1. Does the contract inherit `ZamaEthereumConfig`?
+1. Does the contract inherit the right config base for its chain (`ZamaEthereumConfig`, or `ZamaPolygonConfig` on Amoy)?
 2. Is every encrypted input unwrapped with `FHE.fromExternal(handle, proof)`?
 3. Is every stored ciphertext followed by `FHE.allowThis(...)`?
 4. If the user will decrypt a value, does the contract call `FHE.allow(ct, user)`?
 5. Are you trying to `if`/`require` on an `ebool`? Switch to `FHE.select`.
 6. In tests, is `fhevm.createEncryptedInput` called with the actual `msg.sender` of the tx?
-7. In public decryption, does the contract's `cts` array match the client's `publicDecrypt` handle order exactly?
+7. In public decryption, does the contract's `cts` array match the client's `decryptPublicValues` handle order exactly?
 8. For ERC-7984, is the amount in the `euint64` range and overload signature disambiguated?
+9. Is the client on `@zama-fhe/sdk`, or still calling legacy `createInstance` / `createEncryptedInput`?
 
 90% of FHEVM bugs resolve at step 3 or 4.
 

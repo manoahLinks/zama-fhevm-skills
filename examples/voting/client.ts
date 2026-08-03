@@ -1,10 +1,16 @@
 // Browser / Node.js client for the Voting contract.
 // Demonstrates casting an encrypted vote and reading revealed tallies.
+//
+// Uses @zama-fhe/sdk (the current client SDK), with ethers for contract calls.
 
-import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk";
+import { ZamaSDK } from "@zama-fhe/sdk";
+import { createConfig } from "@zama-fhe/sdk/ethers";
+import { sepolia } from "@zama-fhe/sdk/chains";
+import { web } from "@zama-fhe/sdk/web";
 import { Contract, BrowserProvider } from "ethers";
+import type { Address, Hex } from "viem";
 
-const VOTING_ADDRESS = "0x..."; // deployed address
+const VOTING_ADDRESS = "0x..." as Address; // deployed address
 const VOTING_ABI = [
     "function vote(bytes32 encVote, bytes inputProof)",
     "function revealResults()",
@@ -13,39 +19,55 @@ const VOTING_ABI = [
     "function hasVoted(address) view returns (bool)"
 ];
 
+// Build the SDK once — construction is synchronous.
+let sdk: ZamaSDK | null = null;
+
 async function init() {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
-    const instance = await createInstance({
-        ...SepoliaConfig,
-        network: (window as any).ethereum
-    });
+
+    if (!sdk) {
+        // The ethers config is a union: pass `{ ethereum }` (browser) OR
+        // `{ signer }` (Node/direct) — not both. Storage defaults to
+        // IndexedDB in a browser and memory in Node.
+        sdk = new ZamaSDK(
+            createConfig({
+                chains: [sepolia],
+                ethereum: (window as any).ethereum,
+                relayers: { [sepolia.id]: web() }
+            })
+        );
+    }
+
     const contract = new Contract(VOTING_ADDRESS, VOTING_ABI, signer);
-    return { instance, signer, contract, userAddress: await signer.getAddress() };
+    return { sdk, signer, contract, userAddress: (await signer.getAddress()) as Address };
 }
 
 export async function castVote(choice: 0 | 1) {
-    const { instance, signer, contract, userAddress } = await init();
+    const { sdk, contract, userAddress } = await init();
 
-    const input = instance.createEncryptedInput(VOTING_ADDRESS, userAddress);
-    input.add8(BigInt(choice));
-    const enc = await input.encrypt();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [{ value: BigInt(choice), type: "euint8" }],
+        contractAddress: VOTING_ADDRESS,
+        userAddress
+    });
 
-    const tx = await contract.vote(enc.handles[0], enc.inputProof);
+    const tx = await contract.vote(encryptedValues[0], inputProof);
     await tx.wait();
 }
 
 export async function readTallies(): Promise<{ yes: bigint; no: bigint }> {
-    const { instance, contract } = await init();
+    const { sdk, contract } = await init();
 
-    const yesHandle: string = await contract.yesCountHandle();
-    const noHandle: string = await contract.noCountHandle();
+    const yesHandle: Hex = await contract.yesCountHandle();
+    const noHandle: Hex = await contract.noCountHandle();
 
     // Works after revealResults() has been called — values are publicly decryptable.
-    const result = await instance.publicDecrypt([yesHandle, noHandle]);
+    // No signer needed for public decryption.
+    const result = await sdk.decryption.decryptPublicValues([yesHandle, noHandle]);
 
     return {
-        yes: result[yesHandle] as bigint,
-        no: result[noHandle] as bigint
+        yes: result.values[yesHandle] as bigint,
+        no: result.values[noHandle] as bigint
     };
 }

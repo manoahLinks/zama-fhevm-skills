@@ -13,7 +13,7 @@ Two hard consequences of this that shape every design decision:
 
 ## When to use this skill
 
-Trigger on any of: `FHEVM`, `Zama`, `fhEVM`, `confidential contract`, `encrypted balance`, `euint`, `ebool`, `FHE.select`, `externalEuint`, `ERC-7984`, `ERC7984`, `confidential token`, `confidentialTransfer`, `relayer SDK`, `@zama-fhe/relayer-sdk`, `@fhevm/solidity`.
+Trigger on any of: `FHEVM`, `Zama`, `fhEVM`, `confidential contract`, `encrypted balance`, `euint`, `ebool`, `FHE.select`, `externalEuint`, `ERC-7984`, `ERC7984`, `confidential token`, `confidentialTransfer`, `Zama SDK`, `@zama-fhe/sdk`, `relayer SDK`, `@zama-fhe/relayer-sdk`, `@fhevm/solidity`, `ZamaSDK`.
 
 ## Critical rules (never violate these)
 
@@ -27,7 +27,7 @@ Every rule here maps to a known class of bugs. Violating any of them produces co
 6. **`FHE.div` and `FHE.rem` require a plaintext (non-encrypted) right-hand side.** Dividing two ciphertexts is not supported.
 7. **`FHE.randEuintX(upperBound)` requires `upperBound` to be a power of 2**, and cannot be called from `eth_call` — it must run inside a real transaction.
 8. **Loop bounds must be plaintext.** You cannot write `while (encryptedCond)`.
-9. **Inherit from `ZamaEthereumConfig`** in every FHE contract. This single base handles mainnet (chainId 1), Sepolia (11155111), and localhost (31337) automatically. There is no separate `SepoliaConfig` in Solidity — that name only exists in the TypeScript Relayer SDK.
+9. **Inherit `ZamaEthereumConfig`** in every FHE contract. At the pinned `@fhevm/solidity@0.11.1` this is the only config base, and it covers mainnet (1), Sepolia (11155111), and localhost (31337); any other chain reverts with `ZamaProtocolUnsupported()`. (0.13.1+ adds a separate `ZamaPolygonConfig` for Polygon Amoy, but that version is not usable with `@openzeppelin/confidential-contracts` — see the versions table.) There is no `SepoliaConfig` in Solidity — that name only ever existed in the legacy TypeScript Relayer SDK.
 10. **In tests, never mock FHE.** Use the `@fhevm/hardhat-plugin` which provides real encrypted input creation and decryption helpers.
 11. **Public decryption proof is bound to the exact order of handles.** `[a, b]` is not interchangeable with `[b, a]`.
 12. **User decryption in a single request cannot exceed 2048 bits total** across all ciphertexts.
@@ -45,11 +45,12 @@ When the user asks for something, load the matching reference file(s). Reference
 | Accept encrypted inputs from users / frontend → contract | `references/04-inputs-and-proofs.md` |
 | Branching, conditionals, loops on encrypted data | `references/05-conditional-logic.md` |
 | Reveal a result to a user or to the chain | `references/06-decryption.md` |
-| Build a frontend / dApp / wallet integration | `references/07-frontend-relayer-sdk.md` |
+| Build a frontend / dApp / wallet integration | `references/07-frontend-sdk.md` |
 | Write Hardhat tests with encrypted inputs | `references/08-testing-hardhat.md` + `templates/hardhat-test.ts` |
 | Deploy to Sepolia or mainnet | `references/09-deployment.md` |
 | Confidential token / ERC-7984 / wrapping ERC-20 | `references/10-erc7984.md` + `templates/erc7984-token.sol` |
 | "This error / weird behavior / why doesn't it work?" | `references/11-anti-patterns.md` |
+| Contract addresses / chain IDs / relayer URLs / Sepolia testnet setup | `references/12-contract-addresses.md` |
 | Full worked example: sealed-bid auction | `examples/sealed-bid-auction/` |
 | Full worked example: confidential voting | `examples/voting/` |
 | Full worked example: confidential token | `examples/erc7984-token/` |
@@ -62,11 +63,18 @@ Pin to these when generating `package.json` or install commands.
 |---|---|---|
 | `@fhevm/solidity` | Solidity library (`FHE.sol`, types, config) | 0.11.1 |
 | `@fhevm/hardhat-plugin` | Hardhat integration for encrypted inputs + decryption in tests | 0.4.2 |
-| `@zama-fhe/relayer-sdk` | TypeScript client SDK (frontend + Node) | 0.4.1 |
-| `@openzeppelin/confidential-contracts` | ERC-7984 base contracts | 0.4.0 |
+| `@zama-fhe/sdk` | TypeScript client SDK (frontend + Node) — **current** | 3.4.0 |
+| `@zama-fhe/react-sdk` | React bindings for the above | matches `@zama-fhe/sdk` |
+| `@openzeppelin/confidential-contracts` | ERC-7984 base contracts | 0.5.1 |
+
+Verified against the npm registry on 2026-08-03, and confirmed to install together by `./validate.sh`.
+
+⚠️ **`@fhevm/solidity` is held at 0.11.1 on purpose — do not "upgrade" it to 0.13.1.** Every published `@openzeppelin/confidential-contracts` release through 0.5.1 declares an **exact** peer dependency on `@fhevm/solidity@0.11.1`. Bumping the library fails with `ERESOLVE`, and `--force` yields a broken dependency tree. 0.13.1 exists and adds `ZamaPolygonConfig` (Polygon Amoy, 80002), but it is unusable alongside the ERC-7984 base contracts this skill teaches. Revisit only when OpenZeppelin publishes a release targeting 0.13.x.
+
+**Legacy — do not use for new work:** `@zama-fhe/relayer-sdk` (superseded by `@zama-fhe/sdk`; still published at 0.4.4) and `fhevmjs` (long deprecated). See the migration table in `references/07-frontend-sdk.md`.
 
 **Reference starting point:** `github.com/zama-ai/fhevm-hardhat-template` is the canonical template. Clone it, then `npm install`.
-If you upgrade any package, re-run `./validate.sh` and update the pinned versions table in this file.
+If you upgrade any package, update the pinned versions table in this file and the address tables in `references/12-contract-addresses.md`. Maintainers working in the skill's source repo should also re-run `./validate.sh` there — that script is a repo-side development tool and is deliberately not part of an installed skill, so it will not be present in this directory if you installed via `npx zama-fhevm-skill`.
 
 **Canonical example dApps:** `github.com/zama-ai/dapps` — contains blind auctions, FHE Wordle, ERC-7984 frontend, and more.
 
@@ -78,6 +86,7 @@ If you upgrade any package, re-run `./validate.sh` and update the pinned version
 ├── SKILL.md                          # Claude Code wrapper
 ├── .cursor/rules/fhevm.mdc           # Cursor wrapper
 ├── .windsurfrules                    # Windsurf wrapper
+├── validate.sh                       # Repo-only: re-validate examples (not shipped to installs)
 ├── references/
 │   ├── 00-setup.md
 │   ├── 01-architecture.md
@@ -86,11 +95,12 @@ If you upgrade any package, re-run `./validate.sh` and update the pinned version
 │   ├── 04-inputs-and-proofs.md
 │   ├── 05-conditional-logic.md
 │   ├── 06-decryption.md
-│   ├── 07-frontend-relayer-sdk.md
+│   ├── 07-frontend-sdk.md
 │   ├── 08-testing-hardhat.md
 │   ├── 09-deployment.md
 │   ├── 10-erc7984.md
-│   └── 11-anti-patterns.md
+│   ├── 11-anti-patterns.md
+│   └── 12-contract-addresses.md
 ├── templates/
 │   ├── hardhat.config.ts
 │   ├── basic-contract.sol

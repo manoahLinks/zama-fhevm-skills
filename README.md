@@ -12,12 +12,16 @@ Drop this skill into your project and ask your agent:
 
 ## ✅ Validated end-to-end
 
-All example contracts in this skill are **compiled and tested against the official `fhevm-hardhat-template`** (v0.4.1) using:
+Current pinned versions (verified against the npm registry 2026-08-03):
 
 - `@fhevm/solidity@0.11.1`
 - `@fhevm/hardhat-plugin@0.4.2`
-- `@zama-fhe/relayer-sdk@0.4.1`
-- `@openzeppelin/confidential-contracts@0.4.0`
+- `@zama-fhe/sdk@3.4.0` — current client SDK
+- `@openzeppelin/confidential-contracts@0.5.1`
+
+The example contracts and Hardhat tests below are validated end-to-end by `./validate.sh` against the official `fhevm-hardhat-template` at exactly the pins above — **10/10 passing**, last run 2026-08-03.
+
+`validate.sh` copies only `*.sol` and `*.test.ts` into the sandbox, so it does **not** exercise the `client.ts` files or the frontend reference. The `@zama-fhe/sdk` client code is verified against the package's published TypeScript definitions, not by a running test.
 
 ```
 Voting               3/3 ✔  (encrypted tallies + public reveal)
@@ -48,11 +52,12 @@ Every pattern in the references is taken from working code, not improvised from 
 │   ├── 04-inputs-and-proofs.md
 │   ├── 05-conditional-logic.md
 │   ├── 06-decryption.md
-│   ├── 07-frontend-relayer-sdk.md
+│   ├── 07-frontend-sdk.md
 │   ├── 08-testing-hardhat.md
 │   ├── 09-deployment.md
 │   ├── 10-erc7984.md
-│   └── 11-anti-patterns.md
+│   ├── 11-anti-patterns.md
+│   └── 12-contract-addresses.md
 ├── templates/                      ← copy-paste starters
 │   ├── hardhat.config.ts
 │   ├── basic-contract.sol
@@ -154,7 +159,8 @@ FHEVM has a sharp learning curve: code that compiles can silently break because 
 | Using `if/require` on an encrypted value | Rule #1 + pattern cookbook in `05-conditional-logic.md` |
 | Returning `euint` from `view` expecting a plaintext | Rule #4 + explicit anti-pattern example |
 | Dividing two ciphertexts | Rule #6 + operation table showing plaintext-RHS constraint |
-| Using deprecated `fhevmjs` instead of `@zama-fhe/relayer-sdk` | Package pinning + repeated throughout frontend references |
+| Using a superseded client SDK (`fhevmjs`, `@zama-fhe/relayer-sdk`) | Package pinning + status table and migration guide in `07-frontend-sdk.md` |
+| Hardcoding or guessing coprocessor addresses | `references/12-contract-addresses.md` + config-base inheritance rule |
 
 ---
 
@@ -164,7 +170,7 @@ FHEVM has a sharp learning curve: code that compiles can silently break because 
 The agent loads `AGENTS.md` → matches routing table → reads `references/05-conditional-logic.md` + `references/06-decryption.md` → consults `examples/voting/` → produces a contract that uses `FHE.select`, marks tallies as publicly decryptable, and calls `FHE.allowThis` on every update.
 
 ### "How do I let users decrypt their balance?"
-Agent loads `references/03-acl.md` + `references/06-decryption.md` + `references/07-frontend-relayer-sdk.md` → generates correct `FHE.allow(balance, user)` on the Solidity side + full EIP-712 `userDecrypt` flow on the TypeScript side.
+Agent loads `references/03-acl.md` + `references/06-decryption.md` + `references/07-frontend-sdk.md` → generates correct `FHE.allow(balance, user)` on the Solidity side + a `sdk.decryption.decryptValues(...)` call on the TypeScript side.
 
 ### "My contract compiles but nothing works"
 Agent loads `references/11-anti-patterns.md` → walks the diagnostic checklist (config base? `allowThis`? `fromExternal`?) → identifies the missing call without user hand-holding.
@@ -181,9 +187,10 @@ Agent loads `references/11-anti-patterns.md` → walks the diagnostic checklist 
 | FHE operations (arithmetic, comparison, conditional) | `references/02-types-and-operations.md` + `05-conditional-logic.md` |
 | Access control (FHE.allow, allowThis, allowTransient) | `references/03-acl.md` |
 | Input proofs | `references/04-inputs-and-proofs.md` |
-| User decryption (EIP-712) | `references/06-decryption.md` + `07-frontend-relayer-sdk.md` |
+| User decryption | `references/06-decryption.md` + `07-frontend-sdk.md` |
 | Public decryption | `references/06-decryption.md` + sealed-bid auction example |
-| Frontend integration | `references/07-frontend-relayer-sdk.md` + `templates/frontend-snippet.ts` |
+| Frontend integration | `references/07-frontend-sdk.md` + `templates/frontend-snippet.ts` |
+| Testnet/mainnet contract addresses | `references/12-contract-addresses.md` |
 | Testing contracts | `references/08-testing-hardhat.md` + `templates/hardhat-test.ts` |
 | Anti-patterns | `references/11-anti-patterns.md` (full catalog + diagnostic checklist) |
 | OpenZeppelin Confidential Contracts / ERC-7984 | `references/10-erc7984.md` + `examples/erc7984-token/` |

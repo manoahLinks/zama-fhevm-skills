@@ -114,7 +114,7 @@ function getMyBalance() external {
 }
 ```
 
-After this, the user's frontend can call `instance.userDecrypt(...)` on the handle returned by `balances[msg.sender]`.
+After this, the user's frontend can call `sdk.decryption.decryptValues(...)` on the handle returned by `balances[msg.sender]`.
 
 ### Restricting transfers to addresses the sender has previously been given access to
 

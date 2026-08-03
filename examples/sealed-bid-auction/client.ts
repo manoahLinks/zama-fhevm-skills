@@ -2,11 +2,17 @@
 // 1. Place encrypted bid
 // 2. After auction ends, read revealed values via public decryption
 // 3. Submit resolution with the proof
+//
+// Uses @zama-fhe/sdk (the current client SDK).
 
-import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk";
+import { ZamaSDK } from "@zama-fhe/sdk";
+import { createConfig } from "@zama-fhe/sdk/ethers";
+import { sepolia } from "@zama-fhe/sdk/chains";
+import { web } from "@zama-fhe/sdk/web";
 import { Contract, BrowserProvider } from "ethers";
+import type { Address, Hex } from "viem";
 
-const AUCTION_ADDRESS = "0x...";
+const AUCTION_ADDRESS = "0x..." as Address;
 
 const AUCTION_ABI = [
     "function bid(bytes32 encBid, bytes inputProof)",
@@ -18,55 +24,42 @@ const AUCTION_ABI = [
     "function auctionEnds() view returns (uint256)"
 ];
 
-type PublicDecryptResult = Record<string, bigint | string | boolean> & {
-    proof?: string;
-    decryptionProof?: string;
-    metadata?: {
-        proof?: string;
-    };
-};
-
-function extractDecryptionProof(result: PublicDecryptResult): string {
-    if (typeof result.proof === "string" && result.proof.length > 0) {
-        return result.proof;
-    }
-    if (typeof result.decryptionProof === "string" && result.decryptionProof.length > 0) {
-        return result.decryptionProof;
-    }
-    if (typeof result.metadata?.proof === "string" && result.metadata.proof.length > 0) {
-        return result.metadata.proof;
-    }
-
-    throw new Error(
-        "publicDecrypt did not return a decryption proof. Check your @zama-fhe/relayer-sdk version."
-    );
-}
+let sdk: ZamaSDK | null = null;
 
 async function init() {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
-    const instance = await createInstance({
-        ...SepoliaConfig,
-        network: (window as any).ethereum
-    });
+
+    if (!sdk) {
+        sdk = new ZamaSDK(
+            createConfig({
+                chains: [sepolia],
+                ethereum: (window as any).ethereum,
+                relayers: { [sepolia.id]: web() }
+            })
+        );
+    }
+
     const contract = new Contract(AUCTION_ADDRESS, AUCTION_ABI, signer);
     return {
-        instance,
+        sdk,
         signer,
         contract,
-        userAddress: await signer.getAddress()
+        userAddress: (await signer.getAddress()) as Address
     };
 }
 
 /// Place an encrypted bid.
 export async function placeBid(amount: bigint) {
-    const { instance, contract, userAddress } = await init();
+    const { sdk, contract, userAddress } = await init();
 
-    const input = instance.createEncryptedInput(AUCTION_ADDRESS, userAddress);
-    input.add64(amount);
-    const enc = await input.encrypt();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [{ value: amount, type: "euint64" }],
+        contractAddress: AUCTION_ADDRESS,
+        userAddress
+    });
 
-    const tx = await contract.bid(enc.handles[0], enc.inputProof);
+    const tx = await contract.bid(encryptedValues[0], inputProof);
     await tx.wait();
 }
 
@@ -79,24 +72,23 @@ export async function triggerReveal() {
 
 /// Fetch the publicly-decryptable winner and bid, then post them with proof.
 export async function resolveAuction() {
-    const { instance, contract } = await init();
+    const { sdk, contract } = await init();
 
-    const winnerHandle: string = await contract.winningAddressHandle();
-    const bidHandle: string = await contract.highestBidHandle();
+    const winnerHandle: Hex = await contract.winningAddressHandle();
+    const bidHandle: Hex = await contract.highestBidHandle();
 
-    // Order MUST match the contract's cts array in resolve(): [winner, bid]
-    const result = await instance.publicDecrypt([
+    // Order MUST match the contract's cts array in resolve(): [winner, bid].
+    // The decryption proof is bound to this exact ordering.
+    // No signer needed — these are publicly decryptable.
+    const result = await sdk.decryption.decryptPublicValues([
         winnerHandle,
         bidHandle
-    ]) as PublicDecryptResult;
+    ]);
 
-    const winner = result[winnerHandle] as string;
-    const bid = result[bidHandle] as bigint;
+    const winner = result.values[winnerHandle] as string;
+    const bid = result.values[bidHandle] as bigint;
 
-    // Different SDK releases may expose proof fields under different keys.
-    const decryptionProof = extractDecryptionProof(result);
-
-    const tx = await contract.resolve(winner, bid, decryptionProof);
+    const tx = await contract.resolve(winner, bid, result.decryptionProof);
     await tx.wait();
 
     return { winner, bid };

@@ -21,7 +21,7 @@ cd my-fhevm-project
 npm install
 ```
 
-The template ships with a working `FHECounter.sol`, a test, a deploy script, and pinned versions of `@fhevm/solidity`, `@fhevm/hardhat-plugin`, and `@zama-fhe/relayer-sdk`. Do not try to assemble these from scratch — use the template.
+The template ships with a working `FHECounter.sol`, a test, a deploy script, and pinned versions of `@fhevm/solidity` and `@fhevm/hardhat-plugin`. Do not try to assemble these from scratch — use the template. Check which client SDK it pins: if it still pulls `@zama-fhe/relayer-sdk`, that is the legacy package and new frontend code should use `@zama-fhe/sdk` instead.
 
 ## Project structure you will see after init
 
@@ -64,7 +64,10 @@ If you cannot start from the template, install:
 
 ```bash
 npm install --save-dev @fhevm/hardhat-plugin
-npm install @fhevm/solidity @zama-fhe/relayer-sdk
+npm install @fhevm/solidity
+
+# Client SDK — only if this project also has a frontend
+npm install @zama-fhe/sdk viem
 ```
 
 Then add to `hardhat.config.ts`:
@@ -73,14 +76,14 @@ Then add to `hardhat.config.ts`:
 import "@fhevm/hardhat-plugin";
 ```
 
-And inherit `ZamaEthereumConfig` in every contract that uses FHE. This single base automatically wires up the correct coprocessor addresses based on `block.chainid` — mainnet (1), Sepolia (11155111), and localhost (31337) are all handled. **Without this inheritance, `FHE.*` calls will fail at runtime** because the contract will not know where the coprocessor lives.
+And inherit `ZamaEthereumConfig` in every contract that uses FHE. It automatically wires up the correct coprocessor addresses based on `block.chainid` — mainnet (1), Sepolia (11155111), and localhost (31337). **Without this inheritance, `FHE.*` calls will fail at runtime** because the contract will not know where the coprocessor lives.
 
 ## Common setup mistakes
 
 - **Using Node v21 or v23**: will produce cryptic Hardhat errors. Downgrade to v20 or v22.
 - **Forgetting `@fhevm/hardhat-plugin` import in `hardhat.config.ts`**: the test helpers (`fhevm.createEncryptedInput`, `fhevm.userDecryptEuint`) will be `undefined`.
 - **Not running `npm install` after cloning**: the template's lockfile pins working versions — trust it.
-- **Trying to use `fhevmjs`**: deprecated. The current client package is `@zama-fhe/relayer-sdk`.
+- **Trying to use `fhevmjs` or `@zama-fhe/relayer-sdk`**: both superseded. The current client package is `@zama-fhe/sdk`.
 
 ## Next step
 

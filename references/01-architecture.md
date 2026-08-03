@@ -12,7 +12,7 @@ FHEVM lets Ethereum contracts compute over **encrypted integers** (`euint8`, `eu
 2. **Gateway chain** — a coprocessor chain that performs the actual FHE computation off-chain and commits results back.
 3. **KMS (Key Management System)** — holds the decryption keys. Decryption requests go here (via the relayer SDK) and return re-encrypted results that only the intended recipient can open.
 
-As a Solidity or TypeScript developer, you do not interact with the Gateway or KMS directly — you call `FHE.*` in Solidity and `instance.*` in TypeScript. But understanding that these pieces exist explains **why decryption is asynchronous**: the plaintext does not live on the host chain.
+As a Solidity or TypeScript developer, you do not interact with the Gateway or KMS directly — you call `FHE.*` in Solidity and `sdk.*` in TypeScript. But understanding that these pieces exist explains **why decryption is asynchronous**: the plaintext does not live on the host chain.
 
 ## The lifecycle of an encrypted value
 
