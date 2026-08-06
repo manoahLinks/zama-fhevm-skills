@@ -67,7 +67,7 @@ export async function readTallies(): Promise<{ yes: bigint; no: bigint }> {
     const result = await sdk.decryption.decryptPublicValues([yesHandle, noHandle]);
 
     return {
-        yes: result.values[yesHandle] as bigint,
-        no: result.values[noHandle] as bigint
+        yes: result.clearValues[yesHandle] as bigint,
+        no: result.clearValues[noHandle] as bigint
     };
 }

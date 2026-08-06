@@ -110,14 +110,14 @@ const result = await sdk.decryption.decryptPublicValues([
     winningBidHandle
 ]);
 
-const winner = result.values[winningAddressHandle];
-const bid = result.values[winningBidHandle];
+const winner = result.clearValues[winningAddressHandle];
+const bid = result.clearValues[winningBidHandle];
 const decryptionProof = result.decryptionProof;
 ```
 
 The relayer returns the plaintext values **and** a cryptographic proof that the decryption is correct. `decryptPublicValues` needs no signer — public values are open to anyone.
 
-The result is structured: clear values under `result.values` (keyed by handle) and the proof under `result.decryptionProof`. The legacy Relayer SDK varied this field name across releases and needed a defensive extractor; that is no longer necessary.
+The result is structured: clear values under `result.clearValues` (keyed by handle), the ABI-encoded form under `result.abiEncodedClearValues` (what you pass to `checkSignatures`), and the proof under `result.decryptionProof`. The legacy Relayer SDK varied this field name across releases and needed a defensive extractor; that is no longer necessary.
 
 ### Step 3 — Contract verifies and acts on the plaintext
 

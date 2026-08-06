@@ -85,8 +85,8 @@ export async function resolveAuction() {
         bidHandle
     ]);
 
-    const winner = result.values[winnerHandle] as string;
-    const bid = result.values[bidHandle] as bigint;
+    const winner = result.clearValues[winnerHandle] as string;
+    const bid = result.clearValues[bidHandle] as bigint;
 
     const tx = await contract.resolve(winner, bid, result.decryptionProof);
     await tx.wait();

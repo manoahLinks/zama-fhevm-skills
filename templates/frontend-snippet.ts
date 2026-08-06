@@ -129,7 +129,8 @@ export async function readPublicResult(handles: Hex[]) {
     const result = await sdk.decryption.decryptPublicValues(handles);
 
     return {
-        values: result.values,
+        clearValues: result.clearValues,
+        abiEncodedClearValues: result.abiEncodedClearValues,
         decryptionProof: result.decryptionProof
     };
 }

@@ -188,8 +188,8 @@ For values the contract marked with `FHE.makePubliclyDecryptable`. No signer nee
 ```typescript
 const result = await sdk.decryption.decryptPublicValues([winnerHandle, bidHandle]);
 
-const winner = result.values[winnerHandle];
-const bid = result.values[bidHandle];
+const winner = result.clearValues[winnerHandle];
+const bid = result.clearValues[bidHandle];
 
 await contract.write.resolve([winner, bid, result.decryptionProof]);
 ```
